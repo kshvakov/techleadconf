@@ -1,0 +1,17 @@
+---
+user: kinescope
+become: true
+become_method: sudo
+gather_facts: false
+vars:
+  applications_hostvars: "{{ groups.applications  | each_hostvars(hostvars) }}"
+monitoring:
+  hosts: monitoring
+  file_sd_dir: /etc/prometheus/file_sd
+resources:
+  nats: NATS_URL={% for server in nats_servers %}nats://{{ server.ansible_host }}:4222{% if not loop.last %},{% endif %}{% endfor %}
+  postgres: POSTGRES_DSN=postgres://{{ postgres.username }}:{{ postgres.password }}@{% for server in postgres_servers %}{{ server.ansible_host }}:5000{% if not loop.last %},{% endif %}{% endfor %}/{{ postgres.database }}?sslmode=disable
+  clickhouse: |
+    CLICKHOUSE_ADDR={% for server in clickhouse_servers %}{{ server.ansible_host }}:9000{% if not loop.last %},{% endif %}{% endfor %}{{''}}
+    CLICKHOUSE_USERNAME=username
+    CLICKHOUSE_PASSWORD=password

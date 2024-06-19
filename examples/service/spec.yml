@@ -1,0 +1,31 @@
+---
+service:
+  cli: false
+  name: example
+  group: applications
+  deploy:
+    serial: 1
+    probe:
+      type: "http"
+      host: "{{ ansible_host }}"
+      port: "{{ kinescope.example.service.metrics_port }}"
+      path: /metrics
+    roles:
+      - example
+      - example2
+  description: Kinescope.io - yet another service
+  security:
+    owner: kinescope
+    group: kinescope
+  exec:
+    reload: /bin/kill -s SIGTERM $MAINPID
+  limits:
+    mem: unlimited
+    no_file: 100_000
+  resources:
+    - nats
+    - postgres
+  capabilities:
+    - CAP_NET_BIND_SERVICE
+  environments: |
+    PARAMS_1=v1
