@@ -1,0 +1,83 @@
+- hosts: localhost
+  name: include vars
+  gather_facts: false
+  tasks:
+    - check_mode: false
+      merge_yaml:
+        dest: /tmp/kinectl/var_21c27141-1a39-489d-8a2c-c86c34a1143e.yml
+        sources:
+          - inventories/vars/kinescope.yml
+          - inventories/dev/override_vars/kinescope.yml
+
+- hosts: applications
+  name: deploy example
+  user: kinescope
+  serial: 1
+  become: true
+  become_method: sudo
+  gather_facts: false
+  vars:
+    applications_hostvars: "{{ groups.applications  | each_hostvars(hostvars) }}"
+  tasks:
+    - ansible.builtin.include_vars:
+        file: /tmp/kinectl/var_21c27141-1a39-489d-8a2c-c86c34a1143e.yml
+    - name: set version
+      set_fact:
+        app_version: "{% if example.version is defined and example.version|length %}{{ example.version }}{% else %}{% endif %}"
+    - ansible.builtin.apt:
+        dpkg_options: force-downgrade
+        force: true
+        name: example{% if app_version|length %}={{ app_version }}{% endif %}
+        state: "{% if app_version|length %}present{% else %}latest{% endif %}"
+        update_cache: true
+      name: install example
+    - ansible.builtin.file:
+        group: kinescope
+        mode: "0755"
+        owner: kinescope
+        path: /etc/example
+        state: directory
+    - ansible.builtin.template:
+        dest: /etc/example/environment
+        mode: "0644"
+        src: /tmp/kinectl/env_9912ef2e-cf02-445c-b6e7-f7f59148f269
+    - ansible.builtin.template:
+        dest: /etc/systemd/system/example.service
+        mode: "0644"
+        src: /tmp/kinectl/srt_f2f55810-4cd3-4391-b6d6-1813de4fbe73
+    - ansible.builtin.service:
+        daemon_reload: true
+        enabled: true
+        name: example
+        state: started
+    - ansible.builtin.service:
+        daemon_reload: true
+        enabled: true
+        name: example
+        state: restarted
+    - ansible.builtin.uri:
+        follow_redirects: true
+        method: GET
+        url: http://{{ ansible_host }}:{{ kinescope.example.service.metrics_port }}/metrics
+      delay: 5
+      name: http probe
+      register: _result
+      retries: 12
+      until: _result.status == 200
+- hosts: monitoring
+  name: monitoring SD file
+  user: kinescope
+  become: true
+  become_method: sudo
+  gather_facts: false
+  vars:
+    applications_hostvars: "{{ groups.applications  | each_hostvars(hostvars) }}"
+  tasks:
+    - ansible.builtin.include_vars:
+        file: /tmp/kinectl/var_21c27141-1a39-489d-8a2c-c86c34a1143e.yml
+    - ansible.builtin.template:
+        dest: /etc/prometheus/file_sd/example.json
+        group: prometheus
+        mode: "0644"
+        owner: prometheus
+        src: /tmp/kinectl/fds_20378e32-77f7-43e1-86cd-936292911d15

@@ -1,0 +1,15 @@
+[
+{% for server in applications_hostvars %}
+  {
+    "targets" : ["{{ server.ansible_host }}:{{ example.monitoring_port }}"],
+    "labels"  : {
+      "job"      : "kinescope-app",
+      "dc"       : "{{ server.dc }}",
+      "rack"     : "{{ server.rack }}",
+      "group"    : "applications",
+      "service"  : "example",
+      "hostname" : "{{ server.inventory_hostname }}"
+    }
+  } {% if not loop.last %},{% endif %}
+{% endfor %}
+]
